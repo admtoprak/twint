@@ -4,6 +4,8 @@ from geopy.geocoders import Nominatim
 from time import strftime, localtime
 import contextlib
 import sys
+from twint.tweet import Tweet_formats
+import datetime as dtime
 
 _index_tweet_status = False
 _index_follow_status = False
@@ -180,19 +182,6 @@ def nostdout():
     yield
     sys.stdout = savestdout
 
-def weekday(day):
-    weekdays = {
-            "Monday": 1,
-            "Tuesday": 2,
-            "Wednesday": 3,
-            "Thursday": 4,
-            "Friday": 5,
-            "Saturday": 6,
-            "Sunday": 7,
-            }
-
-    return weekdays[day]
-
 def hour(datetime):
     return strftime("%H", localtime(datetime))
 
@@ -208,8 +197,8 @@ def Tweet(Tweet, config):
             "Saturday": 6,
             "Sunday": 7,
             }
-    day = weekdays[strftime("%A", localtime(Tweet.datetime/1000))]
-
+    datetime_ms = dtime.datetime.strptime(Tweet.datetime, Tweet_formats['datetime']).timestamp()
+    day = weekdays[strftime("%A", localtime(datetime_ms))]
     actions = []
 
     dt = f"{Tweet.datestamp} {Tweet.timestamp}"
@@ -220,7 +209,7 @@ def Tweet(Tweet, config):
             "_source": {
                 "id": str(Tweet.id),
                 "conversation_id": Tweet.conversation_id,
-                "created_at": Tweet.datetime,
+                "created_at": datetime_ms*1000,
                 "date": dt,
                 "timezone": Tweet.timezone,
                 "place": Tweet.place,
@@ -232,9 +221,9 @@ def Tweet(Tweet, config):
                 "username": Tweet.username,
                 "name": Tweet.name,
                 "day": day,
-                "hour": hour(Tweet.datetime/1000),
+                "hour": hour(datetime_ms),
                 "link": Tweet.link,
-                "retweet": Tweet.retweet,
+                #"retweet": Tweet.retweet,
                 "essid": config.Essid,
                 "nlikes": int(Tweet.likes_count),
                 "nreplies": int(Tweet.replies_count),
@@ -245,7 +234,7 @@ def Tweet(Tweet, config):
                 "near": config.Near
                 }
             }
-    if Tweet.retweet:
+    if hasattr(Tweet, 'retweet'):
         j_data["_source"].update({"user_rt_id": Tweet.user_rt_id})
         j_data["_source"].update({"user_rt": Tweet.user_rt})
         j_data["_source"].update({"retweet_id": Tweet.retweet_id})
